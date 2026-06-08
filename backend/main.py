@@ -8,8 +8,16 @@ import json
 import asyncio
 
 import models, schemas, database
+from sqlalchemy import text
 
 models.Base.metadata.create_all(bind=database.engine)
+
+try:
+    with database.engine.connect() as conn:
+        conn.execute(text("ALTER TABLE matches ADD COLUMN duration INTEGER DEFAULT 30;"))
+        conn.commit()
+except Exception:
+    pass  # Column already exists or another error occurred
 
 app = FastAPI(title="FTC Mini-Game API")
 
