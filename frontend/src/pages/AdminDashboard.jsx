@@ -71,6 +71,30 @@ function AdminDashboard() {
       .catch(console.error);
   };
 
+  const handleClearLeaderboard = () => {
+    if (window.confirm("Are you sure you want to delete all matches? This will wipe the leaderboard entirely.")) {
+      axios.delete(`${BACKEND_URL}/matches/`)
+        .then(() => {
+          alert("Leaderboard cleared.");
+          fetchState();
+        })
+        .catch(console.error);
+    }
+  };
+
+  const handleClearPlayers = () => {
+    if (window.confirm("Are you sure you want to delete ALL players and matches? This is irreversible.")) {
+      axios.delete(`${BACKEND_URL}/players/`)
+        .then(() => {
+          alert("All players and matches deleted.");
+          fetchPlayers();
+          fetchState();
+          setSelectedPlayer('');
+        })
+        .catch(console.error);
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="app-container flex items-center justify-center">
@@ -198,6 +222,16 @@ function AdminDashboard() {
               </table>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Danger Zone */}
+      <div className="glass-panel" style={{ marginTop: '2rem', border: '2px solid var(--accent-red)' }}>
+        <h3 style={{ color: 'var(--accent-red)', marginBottom: '1rem' }}>Danger Zone</h3>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>These actions are destructive and cannot be undone.</p>
+        <div className="flex gap-4">
+          <button className="btn btn-danger" onClick={handleClearLeaderboard}>Clear Leaderboard (Delete all matches)</button>
+          <button className="btn btn-danger" onClick={handleClearPlayers}>Delete All Players & Registrations</button>
         </div>
       </div>
     </div>

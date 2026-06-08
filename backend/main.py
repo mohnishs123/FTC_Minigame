@@ -185,6 +185,20 @@ def get_current_state(db: Session = Depends(database.get_db)):
         }
     return {"state": "idle"}
 
+@app.delete("/matches/")
+def delete_all_matches(db: Session = Depends(database.get_db)):
+    db.query(models.Match).delete()
+    db.commit()
+    return {"status": "ok"}
+
+@app.delete("/players/")
+def delete_all_players(db: Session = Depends(database.get_db)):
+    # Delete matches first due to foreign key constraints
+    db.query(models.Match).delete()
+    db.query(models.Player).delete()
+    db.commit()
+    return {"status": "ok"}
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
