@@ -18,10 +18,10 @@ function PublicDisplay() {
         if (res.data.state === 'active') {
           // If we were already active, just update score so we don't reset timer
           if (prev.state === 'active' && prev.player_name === res.data.player_name) {
-             return { ...prev, score: res.data.score };
+             return { ...prev, score: Math.max(prev.score || 0, res.data.score) };
           }
           // New match
-          setTimeLeft(30);
+          setTimeLeft(res.data.duration || 30);
           return res.data;
         } else if (res.data.state === 'idle' && prev.state !== 'completed') {
           return res.data;
@@ -60,7 +60,7 @@ function PublicDisplay() {
               team_name: data.team_name,
               team_number: data.team_number
             });
-            setTimeLeft(30);
+            setTimeLeft(data.duration || 30);
           } else if (data.state === 'completed') {
             setGameState({ state: 'completed', score: data.final_score });
             // Refresh leaderboard
@@ -72,7 +72,7 @@ function PublicDisplay() {
             }, 10000);
           }
         } else if (data.type === 'SCORE_UPDATE') {
-          setGameState(prev => ({ ...prev, score: data.score }));
+          setGameState(prev => ({ ...prev, score: Math.max(prev.score || 0, data.score) }));
         }
       };
 

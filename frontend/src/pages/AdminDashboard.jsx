@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { UserPlus, Play, Square, RefreshCcw, Activity } from 'lucide-react';
+import { UserPlus, Play, Square, RefreshCcw, Activity, Lock } from 'lucide-react';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || `http://${window.location.hostname}:8000`;
 
 function AdminDashboard() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  
   const [players, setPlayers] = useState([]);
   const [gameState, setGameState] = useState({ state: 'idle' });
   const [newPlayer, setNewPlayer] = useState({
     name: '', school_name: '', team_number: '', team_name: '', contact: '', notes: ''
   });
   const [selectedPlayer, setSelectedPlayer] = useState('');
+  const [selectedDuration, setSelectedDuration] = useState(30);
 
   const fetchPlayers = () => {
     axios.get(`${BACKEND_URL}/players/`).then(res => setPlayers(res.data)).catch(console.error);
@@ -21,11 +25,23 @@ function AdminDashboard() {
   };
 
   useEffect(() => {
-    fetchPlayers();
-    fetchState();
-    const interval = setInterval(fetchState, 2000);
-    return () => clearInterval(interval);
-  }, []);
+    if (isAuthenticated) {
+      fetchPlayers();
+      fetchState();
+      const interval = setInterval(fetchState, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated]);
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (password === 'password123') {
+      setIsAuthenticated(true);
+    } else {
+      alert('Incorrect password');
+      setPassword('');
+    }
+  };
 
   const handleRegister = (e) => {
     e.preventDefault();
@@ -41,7 +57,10 @@ function AdminDashboard() {
 
   const handleStartMatch = () => {
     if (!selectedPlayer) return alert("Select a player first");
-    axios.post(`${BACKEND_URL}/matches/start`, { player_id: parseInt(selectedPlayer) })
+    axios.post(`${BACKEND_URL}/matches/start`, { 
+      player_id: parseInt(selectedPlayer),
+      duration: parseInt(selectedDuration)
+    })
       .then(fetchState)
       .catch(console.error);
   };
@@ -51,6 +70,28 @@ function AdminDashboard() {
       .then(fetchState)
       .catch(console.error);
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="app-container flex items-center justify-center">
+        <div className="glass-panel flex flex-col items-center gap-6 animate-slide-up" style={{maxWidth: '400px', width: '100%', padding: '3rem 2rem'}}>
+          <Lock size={48} color="var(--accent-red)" />
+          <h2>Admin Login</h2>
+          <form onSubmit={handleLogin} className="flex flex-col gap-4 w-full">
+            <input 
+              type="password" 
+              placeholder="Enter Password" 
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
+              autoFocus 
+              required 
+            />
+            <button type="submit" className="btn btn-primary w-full">Login</button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">
@@ -76,6 +117,16 @@ function AdminDashboard() {
               {players.map(p => (
                 <option key={p.id} value={p.id}>{p.name} - Team {p.team_number} ({p.team_name})</option>
               ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label>Match Duration</label>
+            <select value={selectedDuration} onChange={e => setSelectedDuration(e.target.value)}>
+              <option value="30">30 seconds</option>
+              <option value="60">1 minute</option>
+              <option value="90">1 min 30 seconds</option>
+              <option value="120">2 minutes</option>
             </select>
           </div>
 

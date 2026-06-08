@@ -21,6 +21,7 @@ class Match(Base):
     player_id = Column(Integer, ForeignKey("players.id"))
     score = Column(Integer, default=0)
     status = Column(String, default="pending")  # pending, active, completed
+    duration = Column(Integer, default=30)
     start_time = Column(DateTime(timezone=True), nullable=True)
     end_time = Column(DateTime(timezone=True), nullable=True)
     player = relationship("Player", back_populates="matches")

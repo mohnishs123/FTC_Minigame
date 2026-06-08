@@ -23,7 +23,7 @@ class MatchBase(BaseModel):
     player_id: int
 
 class MatchCreate(MatchBase):
-    pass
+    duration: int = 30
 
 class Match(MatchBase):
     id: int

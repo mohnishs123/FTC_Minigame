@@ -1,10 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from typing import List, Dict
 from datetime import datetime, timezone
 import json
+import asyncio
 
 import models, schemas, database
 
@@ -44,6 +45,26 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+async def auto_end_match(match_id: int, duration: int):
+    await asyncio.sleep(duration)
+    db = database.SessionLocal()
+    try:
+        active_match = db.query(models.Match).filter(models.Match.id == match_id, models.Match.status == "active").first()
+        if active_match:
+            active_match.status = "completed"
+            active_match.end_time = datetime.now(timezone.utc)
+            db.commit()
+            db.refresh(active_match)
+            
+            await manager.broadcast({
+                "type": "GAME_STATE",
+                "state": "completed",
+                "match_id": active_match.id,
+                "final_score": active_match.score
+            })
+    finally:
+        db.close()
+
 # --- API ENDPOINTS ---
 
 @app.post("/players/", response_model=schemas.Player)
@@ -67,7 +88,7 @@ async def start_match(match: schemas.MatchCreate, db: Session = Depends(database
         m.status = "completed"
         m.end_time = datetime.now(timezone.utc)
     
-    db_match = models.Match(player_id=match.player_id, status="active", start_time=datetime.now(timezone.utc), score=0)
+    db_match = models.Match(player_id=match.player_id, status="active", start_time=datetime.now(timezone.utc), score=0, duration=match.duration)
     db.add(db_match)
     db.commit()
     db.refresh(db_match)
@@ -78,10 +99,13 @@ async def start_match(match: schemas.MatchCreate, db: Session = Depends(database
         "state": "active",
         "match_id": db_match.id,
         "score": 0,
+        "duration": db_match.duration,
         "player_name": db_match.player.name,
         "team_name": db_match.player.team_name,
         "team_number": db_match.player.team_number
     })
+    
+    asyncio.create_task(auto_end_match(db_match.id, db_match.duration))
     
     return db_match
 
@@ -146,6 +170,7 @@ def get_current_state(db: Session = Depends(database.get_db)):
             "state": "active",
             "match_id": active_match.id,
             "score": active_match.score,
+            "duration": active_match.duration,
             "player_name": active_match.player.name,
             "team_name": active_match.player.team_name,
             "team_number": active_match.player.team_number
