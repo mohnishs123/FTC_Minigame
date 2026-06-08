@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Trophy, Clock, User, Activity } from 'lucide-react';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || `http://${window.location.hostname}:8000`;
 const WS_URL = BACKEND_URL.replace(/^http/, 'ws') + '/ws';
 
 function PublicDisplay() {
@@ -10,43 +10,92 @@ function PublicDisplay() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [timeLeft, setTimeLeft] = useState(30);
 
-  useEffect(() => {
-    // Initial fetch
+  const fetchStateAndLeaderboard = () => {
     axios.get(`${BACKEND_URL}/state`).then(res => {
-      setGameState(res.data);
+      setGameState(prev => {
+        // Only update if the backend says active, OR if backend says idle but we are not in 'completed' state
+        // We don't want to overwrite the 'completed' screen immediately.
+        if (res.data.state === 'active') {
+          // If we were already active, just update score so we don't reset timer
+          if (prev.state === 'active' && prev.player_name === res.data.player_name) {
+             return { ...prev, score: res.data.score };
+          }
+          // New match
+          setTimeLeft(30);
+          return res.data;
+        } else if (res.data.state === 'idle' && prev.state !== 'completed') {
+          return res.data;
+        }
+        return prev;
+      });
     }).catch(console.error);
 
     axios.get(`${BACKEND_URL}/leaderboard`).then(res => {
       setLeaderboard(res.data);
     }).catch(console.error);
+  };
 
-    // WebSocket connection
-    const ws = new WebSocket(WS_URL);
+  useEffect(() => {
+    fetchStateAndLeaderboard();
+    const interval = setInterval(fetchStateAndLeaderboard, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    let ws;
+    let reconnectTimer;
     
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+    const connectWs = () => {
+      ws = new WebSocket(WS_URL);
       
-      if (data.type === 'GAME_STATE') {
-        if (data.state === 'active') {
-          setGameState({
-            state: 'active',
-            score: data.score,
-            player_name: data.player_name,
-            team_name: data.team_name,
-            team_number: data.team_number
-          });
-          setTimeLeft(30);
-        } else if (data.state === 'completed') {
-          setGameState({ state: 'completed', score: data.final_score });
-          // Refresh leaderboard
-          axios.get(`${BACKEND_URL}/leaderboard`).then(res => setLeaderboard(res.data)).catch(console.error);
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'GAME_STATE') {
+          if (data.state === 'active') {
+            setGameState({
+              state: 'active',
+              score: data.score,
+              player_name: data.player_name,
+              team_name: data.team_name,
+              team_number: data.team_number
+            });
+            setTimeLeft(30);
+          } else if (data.state === 'completed') {
+            setGameState({ state: 'completed', score: data.final_score });
+            // Refresh leaderboard
+            axios.get(`${BACKEND_URL}/leaderboard`).then(res => setLeaderboard(res.data)).catch(console.error);
+            
+            // Go back to idle after 10 seconds
+            setTimeout(() => {
+              setGameState({ state: 'idle', score: 0 });
+            }, 10000);
+          }
+        } else if (data.type === 'SCORE_UPDATE') {
+          setGameState(prev => ({ ...prev, score: data.score }));
         }
-      } else if (data.type === 'SCORE_UPDATE') {
-        setGameState(prev => ({ ...prev, score: data.score }));
-      }
+      };
+
+      ws.onclose = () => {
+        console.log("WebSocket disconnected, reconnecting...");
+        reconnectTimer = setTimeout(connectWs, 2000);
+      };
+      
+      ws.onerror = (err) => {
+        console.error("WebSocket error:", err);
+        ws.close();
+      };
     };
 
-    return () => ws.close();
+    connectWs();
+
+    return () => {
+      clearTimeout(reconnectTimer);
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -54,7 +103,7 @@ function PublicDisplay() {
     if (gameState.state === 'active' && timeLeft > 0) {
       timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
     } else if (timeLeft === 0 && gameState.state === 'active') {
-      // Time is up
+      // Time is up, but we wait for backend to send 'completed'
     }
     return () => clearInterval(timer);
   }, [gameState.state, timeLeft]);
