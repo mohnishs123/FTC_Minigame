@@ -67,8 +67,9 @@ void setup() {
         Serial.println("WiFi connected successfully!");
     }
 
-    // Initialize WebSocket
-    webSocket.begin(ws_host, ws_port, ws_path);
+    // Initialize WebSocket (Using SSL for cloud hosting like Render)
+    // For local testing without SSL, use webSocket.begin(ws_host, 80, ws_path);
+    webSocket.beginSSL(ws_host, 443, ws_path);
     webSocket.onEvent(webSocketEvent);
     webSocket.setReconnectInterval(5000);
 }
