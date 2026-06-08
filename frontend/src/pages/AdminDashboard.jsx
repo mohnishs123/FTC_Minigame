@@ -105,19 +105,48 @@ function AdminDashboard() {
           </div>
         </div>
 
-        {/* Player Registration */}
-        <div className="glass-panel">
-          <h3>Register Player</h3>
-          <form onSubmit={handleRegister} className="flex flex-col gap-4" style={{marginTop: '1rem'}}>
-            <input placeholder="Full Name" value={newPlayer.name} onChange={e => setNewPlayer({...newPlayer, name: e.target.value})} required />
-            <div className="grid-2" style={{gap: '1rem'}}>
-              <input placeholder="Team Number" type="number" value={newPlayer.team_number} onChange={e => setNewPlayer({...newPlayer, team_number: e.target.value})} required />
-              <input placeholder="Team Name" value={newPlayer.team_name} onChange={e => setNewPlayer({...newPlayer, team_name: e.target.value})} required />
-            </div>
-            <input placeholder="School Name" value={newPlayer.school_name} onChange={e => setNewPlayer({...newPlayer, school_name: e.target.value})} required />
-            <input placeholder="Contact Info (Optional)" value={newPlayer.contact} onChange={e => setNewPlayer({...newPlayer, contact: e.target.value})} />
-            <button type="submit" className="btn btn-primary" style={{alignSelf: 'flex-start'}}><UserPlus size={20}/> Register Player</button>
-          </form>
+        {/* Player Registration and List */}
+        <div className="flex flex-col gap-6">
+          <div className="glass-panel">
+            <h3>Register Player</h3>
+            <form onSubmit={handleRegister} className="flex flex-col gap-4" style={{marginTop: '1rem'}}>
+              <input placeholder="Full Name" value={newPlayer.name} onChange={e => setNewPlayer({...newPlayer, name: e.target.value})} required />
+              <div className="grid-2" style={{gap: '1rem'}}>
+                <input placeholder="Team Number" type="number" value={newPlayer.team_number} onChange={e => setNewPlayer({...newPlayer, team_number: e.target.value})} required />
+                <input placeholder="Team Name" value={newPlayer.team_name} onChange={e => setNewPlayer({...newPlayer, team_name: e.target.value})} required />
+              </div>
+              <input placeholder="School Name" value={newPlayer.school_name} onChange={e => setNewPlayer({...newPlayer, school_name: e.target.value})} required />
+              <input placeholder="Contact Info (Optional)" value={newPlayer.contact} onChange={e => setNewPlayer({...newPlayer, contact: e.target.value})} />
+              <button type="submit" className="btn btn-primary" style={{alignSelf: 'flex-start'}}><UserPlus size={20}/> Register Player</button>
+            </form>
+          </div>
+
+          {/* Registered Players List */}
+          <div className="glass-panel" style={{ overflowY: 'auto', maxHeight: '400px' }}>
+            <h3>Registered Players</h3>
+            {players.length === 0 ? (
+              <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>No players registered yet.</p>
+            ) : (
+              <table style={{ width: '100%', marginTop: '1rem', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'left' }}>
+                    <th style={{ padding: '0.5rem' }}>Name</th>
+                    <th style={{ padding: '0.5rem' }}>Team</th>
+                    <th style={{ padding: '0.5rem' }}>School</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {players.map(p => (
+                    <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '0.5rem' }}>{p.name}</td>
+                      <td style={{ padding: '0.5rem' }}>{p.team_number} ({p.team_name})</td>
+                      <td style={{ padding: '0.5rem' }}>{p.school_name}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       </div>
     </div>

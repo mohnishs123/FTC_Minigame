@@ -9,8 +9,8 @@
 #define BUZZER_PIN 21
 
 // WEBSOCKET CONFIGURATION
-// Replace with the deployed Render backend URL later (e.g. "my-ftc-game.onrender.com")
-const char* ws_host = "192.168.1.100"; 
+// Deployed Railway backend URL (no https://, no trailing slash)
+const char* ws_host = "ftcminigame-production.up.railway.app";
 const uint16_t ws_port = 8000;
 const char* ws_path = "/ws";
 
@@ -67,7 +67,7 @@ void setup() {
         Serial.println("WiFi connected successfully!");
     }
 
-    // Initialize WebSocket (Using SSL for cloud hosting like Render)
+    // Initialize WebSocket (Using SSL/WSS — required for Railway's HTTPS-only public domains)
     // For local testing without SSL, use webSocket.begin(ws_host, 80, ws_path);
     webSocket.beginSSL(ws_host, 443, ws_path);
     webSocket.onEvent(webSocketEvent);
