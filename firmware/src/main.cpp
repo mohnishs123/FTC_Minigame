@@ -38,10 +38,10 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 
 void triggerScoreEffect() {
     digitalWrite(LED_PIN, HIGH);
-    digitalWrite(BUZZER_PIN, HIGH);
+    tone(BUZZER_PIN, 1000); // 1000 Hz frequency
     delay(200);
     digitalWrite(LED_PIN, LOW);
-    digitalWrite(BUZZER_PIN, LOW);
+    noTone(BUZZER_PIN);
 }
 
 void setup() {
