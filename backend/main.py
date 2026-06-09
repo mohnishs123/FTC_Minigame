@@ -162,13 +162,14 @@ def get_leaderboard(db: Session = Depends(database.get_db)):
     ).filter(models.Match.status == "completed").group_by(models.Match.player_id).subquery()
     
     leaderboard = db.query(
+        models.Player.id,
         models.Player.name,
         models.Player.team_name,
         models.Player.team_number,
         subquery.c.max_score
     ).join(subquery, models.Player.id == subquery.c.player_id).order_by(desc(subquery.c.max_score)).limit(10).all()
     
-    return [{"name": l.name, "team_name": l.team_name, "team_number": l.team_number, "score": l.max_score} for l in leaderboard]
+    return [{"player_id": l.id, "name": l.name, "team_name": l.team_name, "team_number": l.team_number, "score": l.max_score} for l in leaderboard]
 
 @app.get("/state")
 def get_current_state(db: Session = Depends(database.get_db)):
@@ -196,6 +197,23 @@ def delete_all_players(db: Session = Depends(database.get_db)):
     # Delete matches first due to foreign key constraints
     db.query(models.Match).delete()
     db.query(models.Player).delete()
+    db.commit()
+    return {"status": "ok"}
+
+@app.delete("/players/{player_id}")
+def delete_player(player_id: int, db: Session = Depends(database.get_db)):
+    player = db.query(models.Player).filter(models.Player.id == player_id).first()
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+    # Delete associated matches
+    db.query(models.Match).filter(models.Match.player_id == player_id).delete()
+    db.delete(player)
+    db.commit()
+    return {"status": "ok"}
+
+@app.delete("/leaderboard/{player_id}")
+def delete_leaderboard_entry(player_id: int, db: Session = Depends(database.get_db)):
+    db.query(models.Match).filter(models.Match.player_id == player_id).delete()
     db.commit()
     return {"status": "ok"}
 

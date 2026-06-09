@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { UserPlus, Play, Square, RefreshCcw, Activity, Lock } from 'lucide-react';
+import { UserPlus, Play, Square, RefreshCcw, Activity, Lock, Trash2 } from 'lucide-react';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || `http://${window.location.hostname}:8000`;
 
@@ -9,6 +9,7 @@ function AdminDashboard() {
   const [password, setPassword] = useState('');
   
   const [players, setPlayers] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
   const [gameState, setGameState] = useState({ state: 'idle' });
   const [newPlayer, setNewPlayer] = useState({
     name: '', school_name: '', team_number: '', team_name: '', contact: '', notes: ''
@@ -20,6 +21,10 @@ function AdminDashboard() {
     axios.get(`${BACKEND_URL}/players/`).then(res => setPlayers(res.data)).catch(console.error);
   };
 
+  const fetchLeaderboard = () => {
+    axios.get(`${BACKEND_URL}/leaderboard`).then(res => setLeaderboard(res.data)).catch(console.error);
+  };
+
   const fetchState = () => {
     axios.get(`${BACKEND_URL}/state`).then(res => setGameState(res.data)).catch(console.error);
   };
@@ -27,8 +32,12 @@ function AdminDashboard() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchPlayers();
+      fetchLeaderboard();
       fetchState();
-      const interval = setInterval(fetchState, 2000);
+      const interval = setInterval(() => {
+        fetchState();
+        fetchLeaderboard();
+      }, 2000);
       return () => clearInterval(interval);
     }
   }, [isAuthenticated]);
@@ -53,6 +62,30 @@ function AdminDashboard() {
       setNewPlayer({ name: '', school_name: '', team_number: '', team_name: '', contact: '', notes: '' });
       alert("Player registered!");
     }).catch(console.error);
+  };
+
+  const handleDeletePlayer = (playerId) => {
+    if (window.confirm("Are you sure you want to delete this player and all their matches?")) {
+      axios.delete(`${BACKEND_URL}/players/${playerId}`)
+        .then(() => {
+          fetchPlayers();
+          fetchLeaderboard();
+          fetchState();
+          if (selectedPlayer == playerId) setSelectedPlayer('');
+        })
+        .catch(console.error);
+    }
+  };
+
+  const handleDeleteLeaderboardEntry = (playerId) => {
+    if (window.confirm("Are you sure you want to delete all matches for this player from the leaderboard?")) {
+      axios.delete(`${BACKEND_URL}/leaderboard/${playerId}`)
+        .then(() => {
+          fetchLeaderboard();
+          fetchState();
+        })
+        .catch(console.error);
+    }
   };
 
   const handleStartMatch = () => {
@@ -208,6 +241,7 @@ function AdminDashboard() {
                     <th style={{ padding: '0.5rem' }}>Name</th>
                     <th style={{ padding: '0.5rem' }}>Team</th>
                     <th style={{ padding: '0.5rem' }}>School</th>
+                    <th style={{ padding: '0.5rem' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -216,6 +250,44 @@ function AdminDashboard() {
                       <td style={{ padding: '0.5rem' }}>{p.name}</td>
                       <td style={{ padding: '0.5rem' }}>{p.team_number} ({p.team_name})</td>
                       <td style={{ padding: '0.5rem' }}>{p.school_name}</td>
+                      <td style={{ padding: '0.5rem' }}>
+                        <button className="btn btn-danger" style={{padding: '0.3rem 0.5rem', minWidth: 'auto'}} onClick={() => handleDeletePlayer(p.id)} title="Delete Player">
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Admin Leaderboard View */}
+          <div className="glass-panel" style={{ overflowY: 'auto', maxHeight: '400px' }}>
+            <h3>Current Leaderboard</h3>
+            {leaderboard.length === 0 ? (
+              <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>No scores on the leaderboard.</p>
+            ) : (
+              <table style={{ width: '100%', marginTop: '1rem', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'left' }}>
+                    <th style={{ padding: '0.5rem' }}>Rank</th>
+                    <th style={{ padding: '0.5rem' }}>Player</th>
+                    <th style={{ padding: '0.5rem' }}>Score</th>
+                    <th style={{ padding: '0.5rem' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaderboard.map((entry, index) => (
+                    <tr key={index} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '0.5rem' }}>#{index + 1}</td>
+                      <td style={{ padding: '0.5rem' }}>{entry.name} <br/><span style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>Team {entry.team_number}</span></td>
+                      <td style={{ padding: '0.5rem', fontWeight: 'bold', color: 'var(--accent-blue)' }}>{entry.score}</td>
+                      <td style={{ padding: '0.5rem' }}>
+                        <button className="btn btn-danger" style={{padding: '0.3rem 0.5rem', minWidth: 'auto'}} onClick={() => handleDeleteLeaderboardEntry(entry.player_id)} title="Remove from Leaderboard">
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
