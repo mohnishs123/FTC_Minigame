@@ -11,6 +11,12 @@ function AdminDashboard() {
   const [players, setPlayers] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [gameState, setGameState] = useState({ state: 'idle' });
+  const [toastMessage, setToastMessage] = useState('');
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
   const [newPlayer, setNewPlayer] = useState({
     name: '', school_name: '', team_number: '', team_name: '', contact: '', notes: ''
   });
@@ -60,7 +66,7 @@ function AdminDashboard() {
     }).then(() => {
       fetchPlayers();
       setNewPlayer({ name: '', school_name: '', team_number: '', team_name: '', contact: '', notes: '' });
-      alert("Player registered!");
+      showToast("Player registered!");
     }).catch(console.error);
   };
 
@@ -108,8 +114,9 @@ function AdminDashboard() {
     if (window.confirm("Are you sure you want to delete all matches? This will wipe the leaderboard entirely.")) {
       axios.delete(`${BACKEND_URL}/matches/`)
         .then(() => {
-          alert("Leaderboard cleared.");
+          showToast("Leaderboard cleared.");
           fetchState();
+          fetchLeaderboard();
         })
         .catch(console.error);
     }
@@ -119,9 +126,10 @@ function AdminDashboard() {
     if (window.confirm("Are you sure you want to delete ALL players and matches? This is irreversible.")) {
       axios.delete(`${BACKEND_URL}/players/`)
         .then(() => {
-          alert("All players and matches deleted.");
+          showToast("All players and matches deleted.");
           fetchPlayers();
           fetchState();
+          fetchLeaderboard();
           setSelectedPlayer('');
         })
         .catch(console.error);
@@ -152,6 +160,16 @@ function AdminDashboard() {
 
   return (
     <div className="app-container">
+      {toastMessage && (
+        <div style={{
+          position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--success)', color: 'white', padding: '12px 24px',
+          borderRadius: '8px', zIndex: 9999, fontWeight: 'bold',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.5)', animation: 'slideUp 0.3s ease'
+        }}>
+          {toastMessage}
+        </div>
+      )}
       <header className="nav-bar glass-panel" style={{marginBottom: '2rem'}}>
         <div className="flex items-center gap-4">
           <Activity color="var(--accent-red)" size={32} />
