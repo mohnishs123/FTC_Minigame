@@ -12,6 +12,7 @@ function AdminDashboard() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [gameState, setGameState] = useState({ state: 'idle' });
   const [toastMessage, setToastMessage] = useState('');
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: '', onConfirm: null });
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -71,27 +72,37 @@ function AdminDashboard() {
   };
 
   const handleDeletePlayer = (playerId) => {
-    if (window.confirm("Are you sure you want to delete this player and all their matches?")) {
-      axios.delete(`${BACKEND_URL}/players/${playerId}`)
-        .then(() => {
-          fetchPlayers();
-          fetchLeaderboard();
-          fetchState();
-          if (selectedPlayer == playerId) setSelectedPlayer('');
-        })
-        .catch(console.error);
-    }
+    setConfirmModal({
+      isOpen: true,
+      message: "Are you sure you want to delete this player and all their matches?",
+      onConfirm: () => {
+        axios.delete(`${BACKEND_URL}/players/${playerId}`)
+          .then(() => {
+            fetchPlayers();
+            fetchLeaderboard();
+            fetchState();
+            if (selectedPlayer == playerId) setSelectedPlayer('');
+            showToast("Player deleted.");
+          })
+          .catch(console.error);
+      }
+    });
   };
 
   const handleDeleteLeaderboardEntry = (playerId) => {
-    if (window.confirm("Are you sure you want to delete all matches for this player from the leaderboard?")) {
-      axios.delete(`${BACKEND_URL}/leaderboard/${playerId}`)
-        .then(() => {
-          fetchLeaderboard();
-          fetchState();
-        })
-        .catch(console.error);
-    }
+    setConfirmModal({
+      isOpen: true,
+      message: "Are you sure you want to delete all matches for this player from the leaderboard?",
+      onConfirm: () => {
+        axios.delete(`${BACKEND_URL}/leaderboard/${playerId}`)
+          .then(() => {
+            fetchLeaderboard();
+            fetchState();
+            showToast("Leaderboard entry deleted.");
+          })
+          .catch(console.error);
+      }
+    });
   };
 
   const handleStartMatch = () => {
@@ -111,29 +122,37 @@ function AdminDashboard() {
   };
 
   const handleClearLeaderboard = () => {
-    if (window.confirm("Are you sure you want to delete all matches? This will wipe the leaderboard entirely.")) {
-      axios.delete(`${BACKEND_URL}/matches/`)
-        .then(() => {
-          showToast("Leaderboard cleared.");
-          fetchState();
-          fetchLeaderboard();
-        })
-        .catch(console.error);
-    }
+    setConfirmModal({
+      isOpen: true,
+      message: "Are you sure you want to delete all matches? This will wipe the leaderboard entirely.",
+      onConfirm: () => {
+        axios.delete(`${BACKEND_URL}/matches/`)
+          .then(() => {
+            showToast("Leaderboard cleared.");
+            fetchState();
+            fetchLeaderboard();
+          })
+          .catch(console.error);
+      }
+    });
   };
 
   const handleClearPlayers = () => {
-    if (window.confirm("Are you sure you want to delete ALL players and matches? This is irreversible.")) {
-      axios.delete(`${BACKEND_URL}/players/`)
-        .then(() => {
-          showToast("All players and matches deleted.");
-          fetchPlayers();
-          fetchState();
-          fetchLeaderboard();
-          setSelectedPlayer('');
-        })
-        .catch(console.error);
-    }
+    setConfirmModal({
+      isOpen: true,
+      message: "Are you sure you want to delete ALL players and matches? This is irreversible.",
+      onConfirm: () => {
+        axios.delete(`${BACKEND_URL}/players/`)
+          .then(() => {
+            showToast("All players and matches deleted.");
+            fetchPlayers();
+            fetchState();
+            fetchLeaderboard();
+            setSelectedPlayer('');
+          })
+          .catch(console.error);
+      }
+    });
   };
 
   if (!isAuthenticated) {
@@ -324,6 +343,26 @@ function AdminDashboard() {
           <button className="btn btn-danger" onClick={handleClearPlayers}>Delete All Players & Registrations</button>
         </div>
       </div>
+
+      {/* Custom Confirm Modal */}
+      {confirmModal.isOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000
+        }}>
+          <div className="glass-panel animate-slide-up" style={{maxWidth: '400px', width: '100%', textAlign: 'center'}}>
+            <h3 style={{marginBottom: '1rem'}}>Confirm Action</h3>
+            <p style={{marginBottom: '2rem'}}>{confirmModal.message}</p>
+            <div className="flex gap-4 justify-center">
+              <button className="btn" onClick={() => setConfirmModal({ isOpen: false, message: '', onConfirm: null })}>Cancel</button>
+              <button className="btn btn-danger" onClick={() => {
+                if (confirmModal.onConfirm) confirmModal.onConfirm();
+                setConfirmModal({ isOpen: false, message: '', onConfirm: null });
+              }}>Yes, I'm sure</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
